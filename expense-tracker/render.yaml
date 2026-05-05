@@ -12,11 +12,4 @@ projects:
       plan: free
       region: ohio
       dockerfilePath: ./Dockerfile
-      envVars:
-      - key: DATABASE_URL
-        sync: false
-      - key: DATABASE_USER
-        sync: false
-      - key: DATABASE_PASSWORD
-        sync: false
       autoDeployTrigger: commit
