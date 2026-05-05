@@ -1,7 +1,6 @@
 services:
   - type: web
     name: expense-tracker
-    runtime: jvm
     plan: free
     buildCommand: ./mvnw clean package -DskipTests
     startCommand: java -Dserver.port=$PORT -jar target/*.jar
