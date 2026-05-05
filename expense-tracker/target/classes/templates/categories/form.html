@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head(${pageTitle})}"></head>
+<body>
+<div th:replace="~{layout :: toasts}"></div>
+<nav th:replace="~{layout :: navbar}"></nav>
+
+<div class="container py-4" style="max-width:560px;">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a th:href="@{/categories}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h4 class="fw-bold mb-0" th:text="${pageTitle}">Category</h4>
+            <p class="text-muted mb-0 small">Fill in the details below</p>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <form th:action="${formAction}" method="post" novalidate>
+
+                <!-- Name -->
+                <div class="mb-3">
+                    <label for="name" class="form-label fw-medium">Category Name</label>
+                    <input type="text" id="name" name="name" class="form-control"
+                           placeholder="e.g. Gym, Subscription, Side Income"
+                           th:value="${category.name}" maxlength="50" required autofocus/>
+                    <div class="form-text">Max 50 characters.</div>
+                </div>
+
+                <!-- Type (only show on add) -->
+                <div class="mb-3" th:if="${category.id == null}">
+                    <label class="form-label fw-medium">Type</label>
+                    <div class="d-flex gap-3">
+                        <div class="flex-fill">
+                            <input type="radio" class="btn-check" name="type" id="typeExpense" value="EXPENSE" checked/>
+                            <label class="btn btn-outline-danger w-100" for="typeExpense">
+                                <i class="bi bi-arrow-down-circle me-2"></i>Expense
+                            </label>
+                        </div>
+                        <div class="flex-fill">
+                            <input type="radio" class="btn-check" name="type" id="typeIncome" value="INCOME"/>
+                            <label class="btn btn-outline-success w-100" for="typeIncome">
+                                <i class="bi bi-arrow-up-circle me-2"></i>Income
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Icon picker -->
+                <div class="mb-4">
+                    <label class="form-label fw-medium">Icon</label>
+                    <input type="hidden" id="iconInput" name="icon" th:value="${category.icon ?: 'bi-tag'}"/>
+                    <div class="d-flex flex-wrap gap-2" id="iconPicker">
+                        <button th:each="ic : ${ {'bi-tag','bi-cup-hot','bi-car-front','bi-bag','bi-receipt','bi-film','bi-heart-pulse','bi-book','bi-house','bi-cart','bi-cash-coin','bi-laptop','bi-briefcase','bi-graph-up-arrow','bi-gift','bi-phone','bi-globe','bi-music-note','bi-bicycle','bi-airplane','bi-train-front','bi-bus-front','bi-droplet','bi-lightning-charge','bi-wifi','bi-tv','bi-camera','bi-controller','bi-scissors','bi-three-dots'} }"
+                                type="button"
+                                class="btn btn-sm btn-outline-secondary icon-btn"
+                                th:classappend="${(category.icon ?: 'bi-tag') == ic} ? ' active'"
+                                th:data-icon="${ic}"
+                                th:title="${ic}"
+                                onclick="selectIcon(this)">
+                            <i th:class="'bi ' + ${ic}"></i>
+                        </button>
+                    </div>
+                    <div class="form-text mt-1">Selected: <i id="selectedIconPreview" th:class="'bi ' + ${category.icon ?: 'bi-tag'}"></i> <span id="selectedIconName" th:text="${category.icon ?: 'bi-tag'}"></span></div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4 fw-medium">
+                        <i class="bi bi-check-lg me-2"></i>Save Category
+                    </button>
+                    <a th:href="@{/categories}" class="btn btn-outline-secondary px-4">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{layout :: scripts}"></div>
+<script>
+    function selectIcon(btn) {
+        document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const ic = btn.dataset.icon;
+        document.getElementById('iconInput').value = ic;
+        document.getElementById('selectedIconPreview').className = 'bi ' + ic;
+        document.getElementById('selectedIconName').textContent = ic;
+    }
+</script>
+</body>
+</html>

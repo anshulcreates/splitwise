@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Transactions')}"></head>
+<body>
+<div th:replace="~{layout :: toasts}"></div>
+<nav th:replace="~{layout :: navbar}"></nav>
+
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h4 class="fw-bold mb-1">Transactions</h4>
+            <p class="text-muted mb-0" th:text="${totalElements} + ' records found'">Records</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a th:href="@{/transactions/add(type=INCOME)}" class="btn btn-success btn-sm px-3">
+                <i class="bi bi-plus-circle me-1"></i>Income
+            </a>
+            <a th:href="@{/transactions/add(type=EXPENSE)}" class="btn btn-danger btn-sm px-3">
+                <i class="bi bi-dash-circle me-1"></i>Expense
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form th:action="@{/transactions}" method="get" class="row g-2 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-medium mb-1">Search</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" name="keyword" class="form-control" placeholder="Description or category..."
+                               th:value="${filterKeyword}"/>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-medium mb-1">Type</label>
+                    <select name="type" class="form-select form-select-sm">
+                        <option value="">All Types</option>
+                        <option value="INCOME" th:selected="${filterType == 'INCOME'}">Income</option>
+                        <option value="EXPENSE" th:selected="${filterType == 'EXPENSE'}">Expense</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-medium mb-1">Category</label>
+                    <select name="categoryId" class="form-select form-select-sm">
+                        <option value="">All Categories</option>
+                        <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"
+                                th:selected="${filterCategoryId != null and filterCategoryId == cat.id}"></option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-medium mb-1">From</label>
+                    <input type="date" name="startDate" class="form-control form-control-sm"
+                           th:value="${filterStartDate}"/>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-medium mb-1">To</label>
+                    <input type="date" name="endDate" class="form-control form-control-sm"
+                           th:value="${filterEndDate}"/>
+                </div>
+                <div class="col-12 col-md-1 d-flex gap-1">
+                    <button type="submit" class="btn btn-primary btn-sm flex-fill">
+                        <i class="bi bi-funnel"></i>
+                    </button>
+                    <a th:href="@{/transactions}" class="btn btn-outline-secondary btn-sm flex-fill">
+                        <i class="bi bi-x"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div th:if="${transactions.isEmpty()}" class="empty-state text-center py-5">
+                <i class="bi bi-receipt text-muted" style="font-size:3.5rem;opacity:.3;"></i>
+                <h6 class="text-muted mt-3">No transactions found</h6>
+                <p class="text-muted small">Try adjusting your filters or add a new transaction.</p>
+                <a th:href="@{/transactions/add}" class="btn btn-primary btn-sm">Add Transaction</a>
+            </div>
+
+            <div th:unless="${transactions.isEmpty()}" class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>
+                                <a th:href="@{/transactions(sortBy='transactionDate', sortDir=${sortBy == 'transactionDate' ? reverseSortDir : 'desc'}, keyword=${filterKeyword}, type=${filterType}, categoryId=${filterCategoryId}, startDate=${filterStartDate}, endDate=${filterEndDate})}"
+                                   class="text-decoration-none text-dark fw-semibold">
+                                    Date
+                                    <i th:if="${sortBy == 'transactionDate'}"
+                                       th:class="${sortDir == 'asc'} ? 'bi bi-sort-up' : 'bi bi-sort-down'"></i>
+                                </a>
+                            </th>
+                            <th>Type</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Payment</th>
+                            <th>
+                                <a th:href="@{/transactions(sortBy='amount', sortDir=${sortBy == 'amount' ? reverseSortDir : 'desc'}, keyword=${filterKeyword}, type=${filterType}, categoryId=${filterCategoryId}, startDate=${filterStartDate}, endDate=${filterEndDate})}"
+                                   class="text-decoration-none text-dark fw-semibold">
+                                    Amount
+                                    <i th:if="${sortBy == 'amount'}"
+                                       th:class="${sortDir == 'asc'} ? 'bi bi-sort-up' : 'bi bi-sort-down'"></i>
+                                </a>
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="t : ${transactions.content}">
+                            <td class="text-nowrap" th:text="${#temporals.format(t.transactionDate, 'dd MMM yyyy')}"></td>
+                            <td>
+                                <span th:if="${t.type.name() == 'INCOME'}" class="badge bg-success-subtle text-success fw-medium">
+                                    <i class="bi bi-arrow-up me-1"></i>Income
+                                </span>
+                                <span th:if="${t.type.name() == 'EXPENSE'}" class="badge bg-danger-subtle text-danger fw-medium">
+                                    <i class="bi bi-arrow-down me-1"></i>Expense
+                                </span>
+                            </td>
+                            <td>
+                                <span class="d-flex align-items-center gap-2">
+                                    <i th:class="${t.category.icon ?: 'bi bi-tag'} + ' text-primary'"></i>
+                                    <span th:text="${t.category.name}"></span>
+                                </span>
+                            </td>
+                            <td class="text-muted small" th:text="${t.description ?: '—'}"></td>
+                            <td>
+                                <span class="badge bg-light text-dark border" th:text="${t.paymentMethod.displayName}"></span>
+                            </td>
+                            <td class="fw-semibold"
+                                th:classappend="${t.type.name() == 'INCOME'} ? 'text-success' : 'text-danger'"
+                                th:text="${t.type.name() == 'INCOME' ? '+' : '-'} + '₹' + ${#numbers.formatDecimal(t.amount, 1, 'COMMA', 2, 'POINT')}">
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <a th:href="@{/transactions/edit/{id}(id=${t.id})}"
+                                       class="btn btn-sm btn-outline-primary" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
+                                            data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                            th:data-id="${t.id}"
+                                            th:data-desc="${t.category.name + ' ₹' + t.amount}"
+                                            onclick="setDeleteTarget(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div th:if="${totalPages > 1}" class="card-footer bg-white border-top d-flex justify-content-between align-items-center px-4 py-3">
+            <small class="text-muted">
+                Page <span th:text="${currentPage + 1}"></span> of <span th:text="${totalPages}"></span>
+            </small>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                        <a class="page-link" th:href="@{/transactions(page=${currentPage - 1}, sortBy=${sortBy}, sortDir=${sortDir}, keyword=${filterKeyword}, type=${filterType}, categoryId=${filterCategoryId}, startDate=${filterStartDate}, endDate=${filterEndDate})}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    <li th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                        class="page-item" th:classappend="${i == currentPage} ? 'active'">
+                        <a class="page-link" th:href="@{/transactions(page=${i}, sortBy=${sortBy}, sortDir=${sortDir}, keyword=${filterKeyword}, type=${filterType}, categoryId=${filterCategoryId}, startDate=${filterStartDate}, endDate=${filterEndDate})}"
+                           th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${currentPage + 1 >= totalPages} ? 'disabled'">
+                        <a class="page-link" th:href="@{/transactions(page=${currentPage + 1}, sortBy=${sortBy}, sortDir=${sortDir}, keyword=${filterKeyword}, type=${filterType}, categoryId=${filterCategoryId}, startDate=${filterStartDate}, endDate=${filterEndDate})}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0">
+                <h6 class="modal-title fw-semibold"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Transaction</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-0">Are you sure you want to delete <strong id="deleteDesc"></strong>? This cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{layout :: scripts}"></div>
+<script>
+    function setDeleteTarget(btn) {
+        document.getElementById('deleteDesc').textContent = btn.dataset.desc;
+        document.getElementById('deleteForm').action = '/transactions/delete/' + btn.dataset.id;
+    }
+</script>
+</body>
+</html>

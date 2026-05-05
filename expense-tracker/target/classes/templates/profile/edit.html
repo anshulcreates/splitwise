@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Profile')}"></head>
+<body>
+<div th:replace="~{layout :: toasts}"></div>
+<nav th:replace="~{layout :: navbar}"></nav>
+
+<div class="container py-4" style="max-width:680px;">
+
+    <div class="mb-4">
+        <h4 class="fw-bold mb-1">My Profile</h4>
+        <p class="text-muted mb-0 small">Manage your account information and password</p>
+    </div>
+
+    <!-- Profile info card -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+            <h6 class="fw-semibold mb-0"><i class="bi bi-person-circle me-2 text-primary"></i>Personal Information</h6>
+        </div>
+        <div class="card-body p-4">
+
+            <div th:if="${successMessage}" class="alert alert-success d-flex align-items-center gap-2 py-2" role="alert">
+                <i class="bi bi-check-circle-fill"></i>
+                <span th:text="${successMessage}"></span>
+            </div>
+            <div th:if="${errorMessage}" class="alert alert-danger d-flex align-items-center gap-2 py-2" role="alert">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <span th:text="${errorMessage}"></span>
+            </div>
+
+            <!-- Avatar -->
+            <div class="d-flex align-items-center gap-4 mb-4">
+                <div style="width:72px;height:72px;border-radius:50%;background:#EEF2FF;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;color:#4F46E5;flex-shrink:0;">
+                    <span th:text="${#strings.substring(user.fullName, 0, 1).toUpperCase()}">U</span>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-0" th:text="${user.fullName}">Full Name</h5>
+                    <p class="text-muted mb-0 small" th:text="'@' + ${user.username}">@username</p>
+                    <p class="text-muted mb-0 small">
+                        Member since <span th:text="${#temporals.format(user.createdAt, 'MMMM yyyy')}"></span>
+                    </p>
+                </div>
+            </div>
+
+            <form th:action="@{/profile/update}" method="post" novalidate>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label for="fullName" class="form-label fw-medium">Full Name</label>
+                        <input type="text" id="fullName" name="fullName" class="form-control"
+                               th:value="${user.fullName}" maxlength="100" required/>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label for="email" class="form-label fw-medium">Email Address</label>
+                        <input type="email" id="email" name="email" class="form-control"
+                               th:value="${user.email}" required/>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label for="phone" class="form-label fw-medium">Phone <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="tel" id="phone" name="phone" class="form-control"
+                               th:value="${user.phone}" maxlength="15" placeholder="+91 XXXXX XXXXX"/>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-medium">Username</label>
+                        <input type="text" class="form-control bg-light" th:value="${user.username}" disabled/>
+                        <div class="form-text">Username cannot be changed.</div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary px-4 fw-medium">
+                        <i class="bi bi-check-lg me-2"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change password card -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+            <h6 class="fw-semibold mb-0"><i class="bi bi-shield-lock me-2 text-primary"></i>Change Password</h6>
+        </div>
+        <div class="card-body p-4">
+
+            <div th:if="${passwordError}" class="alert alert-danger d-flex align-items-center gap-2 py-2" role="alert">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <span th:text="${passwordError}"></span>
+            </div>
+
+            <form th:action="@{/profile/change-password}" method="post" novalidate id="passwordForm">
+                <div class="mb-3">
+                    <label for="currentPassword" class="form-label fw-medium">Current Password</label>
+                    <div class="input-group">
+                        <input type="password" id="currentPassword" name="currentPassword"
+                               class="form-control" placeholder="Enter current password" required/>
+                        <button class="btn btn-outline-secondary" type="button" onclick="togglePwd('currentPassword', this)">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="newPassword" class="form-label fw-medium">New Password</label>
+                    <div class="input-group">
+                        <input type="password" id="newPassword" name="newPassword"
+                               class="form-control" placeholder="Min 6 chars, include a letter and number" required/>
+                        <button class="btn btn-outline-secondary" type="button" onclick="togglePwd('newPassword', this)">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <div id="pwdStrength" class="form-text mt-1"></div>
+                </div>
+                <div class="mb-4">
+                    <label for="confirmNewPassword" class="form-label fw-medium">Confirm New Password</label>
+                    <div class="input-group">
+                        <input type="password" id="confirmNewPassword" name="confirmNewPassword"
+                               class="form-control" placeholder="Repeat new password" required/>
+                        <button class="btn btn-outline-secondary" type="button" onclick="togglePwd('confirmNewPassword', this)">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <div id="matchMsg" class="form-text mt-1"></div>
+                </div>
+                <button type="submit" class="btn btn-danger px-4 fw-medium">
+                    <i class="bi bi-lock me-2"></i>Change Password
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<div th:replace="~{layout :: scripts}"></div>
+<script>
+    function togglePwd(fieldId, btn) {
+        const field = document.getElementById(fieldId);
+        const icon = btn.querySelector('i');
+        if (field.type === 'password') {
+            field.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            field.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
+    }
+
+    // Live password strength hint
+    document.getElementById('newPassword').addEventListener('input', function() {
+        const val = this.value;
+        const el = document.getElementById('pwdStrength');
+        if (!val) { el.textContent = ''; return; }
+        const hasLetter = /[A-Za-z]/.test(val);
+        const hasDigit  = /\d/.test(val);
+        if (val.length >= 6 && hasLetter && hasDigit) {
+            el.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Strong enough</span>';
+        } else {
+            el.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Min 6 chars with a letter and a number</span>';
+        }
+    });
+
+    // Live confirm match
+    document.getElementById('confirmNewPassword').addEventListener('input', function() {
+        const el = document.getElementById('matchMsg');
+        if (this.value === document.getElementById('newPassword').value) {
+            el.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Passwords match</span>';
+        } else {
+            el.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Passwords do not match</span>';
+        }
+    });
+</script>
+</body>
+</html>

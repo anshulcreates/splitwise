@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Budgets')}"></head>
+<body>
+<div th:replace="~{layout :: toasts}"></div>
+<nav th:replace="~{layout :: navbar}"></nav>
+
+<div class="container-fluid px-4 py-4">
+
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h4 class="fw-bold mb-1">Budget Manager</h4>
+            <p class="text-muted mb-0 small">Set and track monthly spending limits per category</p>
+        </div>
+        <!-- Month / Year selector -->
+        <form th:action="@{/budgets}" method="get" class="d-flex gap-2 align-items-center">
+            <select name="month" class="form-select form-select-sm" style="width:auto;">
+                <option th:each="m : ${#numbers.sequence(1,12)}"
+                        th:value="${m}"
+                        th:text="${{'January','February','March','April','May','June','July','August','September','October','November','December'}[m-1]}"
+                        th:selected="${m == selectedMonth}"></option>
+            </select>
+            <select name="year" class="form-select form-select-sm" style="width:auto;">
+                <option th:each="y : ${#numbers.sequence(currentYear - 2, currentYear + 1)}"
+                        th:value="${y}" th:text="${y}"
+                        th:selected="${y == selectedYear}"></option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm px-3">
+                <i class="bi bi-arrow-right"></i>
+            </button>
+        </form>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- Left: existing budgets -->
+        <div class="col-12 col-lg-8">
+            <div th:if="${#lists.isEmpty(budgets)}" class="card border-0 shadow-sm">
+                <div class="card-body empty-state text-center py-5">
+                    <i class="bi bi-piggy-bank text-muted" style="font-size:3rem;opacity:.3;"></i>
+                    <h6 class="text-muted mt-3">No budgets set for this month</h6>
+                    <p class="text-muted small">Use the form on the right to add your first budget.</p>
+                </div>
+            </div>
+
+            <div class="row g-3" th:unless="${#lists.isEmpty(budgets)}">
+                <div class="col-12 col-sm-6" th:each="bs : ${budgets}">
+                    <div class="card border-0 shadow-sm budget-card h-100">
+                        <div class="card-body p-3">
+                            <!-- Category name + icon -->
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="cat-icon" style="width:34px;height:34px;">
+                                        <i th:class="${bs.budget.category.icon ?: 'bi bi-tag'}"></i>
+                                    </div>
+                                    <div>
+                                        <p class="mb-0 fw-semibold small" th:text="${bs.budget.category.name}">Category</p>
+                                        <p class="mb-0 text-muted" style="font-size:.75rem;">
+                                            Budget: <span class="fw-medium"
+                                                th:text="'₹' + ${#numbers.formatDecimal(bs.budget.amount, 1, 'COMMA', 2, 'POINT')}"></span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <!-- Delete button -->
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        style="width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center;"
+                                        data-bs-toggle="modal" data-bs-target="#deleteBudgetModal"
+                                        th:data-id="${bs.budget.id}"
+                                        th:data-name="${bs.budget.category.name}"
+                                        th:data-month="${selectedMonth}"
+                                        th:data-year="${selectedYear}"
+                                        onclick="setBudgetDelete(this)" title="Remove budget">
+                                    <i class="bi bi-trash" style="font-size:.7rem;"></i>
+                                </button>
+                            </div>
+
+                            <!-- Progress bar -->
+                            <div class="progress mb-1" style="height:8px;">
+                                <div class="progress-bar"
+                                     th:classappend="'bg-' + ${bs.statusColor}"
+                                     role="progressbar"
+                                     th:style="'width:' + ${bs.percentage} + '%'"
+                                     th:attr="aria-valuenow=${bs.percentage},aria-valuemin=0,aria-valuemax=100">
+                                </div>
+                            </div>
+
+                            <!-- Spent / remaining -->
+                            <div class="d-flex justify-content-between" style="font-size:.75rem;">
+                                <span class="text-muted">
+                                    Spent: <span class="fw-medium text-dark"
+                                        th:text="'₹' + ${#numbers.formatDecimal(bs.spent, 1, 'COMMA', 2, 'POINT')}"></span>
+                                </span>
+                                <span th:if="${bs.remaining.compareTo(T(java.math.BigDecimal).ZERO) >= 0}"
+                                      class="text-success fw-medium"
+                                      th:text="'₹' + ${#numbers.formatDecimal(bs.remaining, 1, 'COMMA', 2, 'POINT')} + ' left'">
+                                </span>
+                                <span th:if="${bs.remaining.compareTo(T(java.math.BigDecimal).ZERO) < 0}"
+                                      class="text-danger fw-medium"
+                                      th:text="'₹' + ${#numbers.formatDecimal(bs.remaining.abs(), 1, 'COMMA', 2, 'POINT')} + ' over'">
+                                </span>
+                            </div>
+
+                            <!-- Over-budget alert -->
+                            <div th:if="${bs.percentage >= 100}"
+                                 class="alert alert-danger py-1 px-2 mt-2 mb-0 small d-flex align-items-center gap-1">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Budget exceeded!
+                            </div>
+                            <div th:if="${bs.percentage >= 70 and bs.percentage < 100}"
+                                 class="alert alert-warning py-1 px-2 mt-2 mb-0 small d-flex align-items-center gap-1">
+                                <i class="bi bi-exclamation-circle-fill"></i>
+                                <span th:text="${#numbers.formatDecimal(bs.percentage, 1, 1)}"></span>% used — approaching limit
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: add/update budget form -->
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 pt-3 pb-0 px-4">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-plus-circle me-2 text-primary"></i>Set Budget</h6>
+                    <p class="text-muted small mb-0">Adding a budget for an existing category replaces it.</p>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/budgets/save}" method="post" novalidate>
+                        <input type="hidden" name="month" th:value="${selectedMonth}"/>
+                        <input type="hidden" name="year"  th:value="${selectedYear}"/>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-medium small">Category</label>
+                            <select name="categoryId" class="form-select form-select-sm" required>
+                                <option value="">— Select expense category —</option>
+                                <option th:each="cat : ${expenseCategories}"
+                                        th:value="${cat.id}" th:text="${cat.name}"></option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-medium small">Budget Amount</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text fw-bold">₹</span>
+                                <input type="number" name="amount" class="form-control"
+                                       placeholder="0.00" step="0.01" min="1" required/>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-medium">
+                            <i class="bi bi-check-lg me-1"></i>Save Budget
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-body p-3">
+                    <p class="fw-medium small mb-2">Progress Legend</p>
+                    <div class="d-flex flex-column gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height:8px;">
+                                <div class="progress-bar bg-success" style="width:50%;"></div>
+                            </div>
+                            <span class="text-muted" style="font-size:.75rem;white-space:nowrap;">Under 70% — On track</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height:8px;">
+                                <div class="progress-bar bg-warning" style="width:80%;"></div>
+                            </div>
+                            <span class="text-muted" style="font-size:.75rem;white-space:nowrap;">70–99% — Caution</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height:8px;">
+                                <div class="progress-bar bg-danger" style="width:100%;"></div>
+                            </div>
+                            <span class="text-muted" style="font-size:.75rem;white-space:nowrap;">100%+ — Over budget</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete modal -->
+<div class="modal fade" id="deleteBudgetModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0">
+                <h6 class="modal-title fw-semibold"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Remove Budget</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-0">Remove budget for <strong id="budgetCatName"></strong>?</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteBudgetForm" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="hidden" id="deleteBudgetMonth" name="month"/>
+                    <input type="hidden" id="deleteBudgetYear"  name="year"/>
+                    <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{layout :: scripts}"></div>
+<script>
+    function setBudgetDelete(btn) {
+        document.getElementById('budgetCatName').textContent = btn.dataset.name;
+        document.getElementById('deleteBudgetForm').action = '/budgets/delete/' + btn.dataset.id;
+        document.getElementById('deleteBudgetMonth').value = btn.dataset.month;
+        document.getElementById('deleteBudgetYear').value  = btn.dataset.year;
+    }
+</script>
+</body>
+</html>

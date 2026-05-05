@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head(${pageTitle})}"></head>
+<body>
+<div th:replace="~{layout :: toasts}"></div>
+<nav th:replace="~{layout :: navbar}"></nav>
+
+<div class="container py-4" style="max-width:680px;">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a th:href="@{/transactions}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h4 class="fw-bold mb-0" th:text="${pageTitle}">Transaction</h4>
+            <p class="text-muted mb-0 small">Fill in the details below</p>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <form th:action="${formAction}" th:object="${dto}" method="post" novalidate>
+
+                <!-- Type Selection -->
+                <div class="mb-4">
+                    <label class="form-label fw-medium">Transaction Type</label>
+                    <div class="d-flex gap-3">
+                        <div class="flex-fill">
+                            <input type="radio" class="btn-check" name="type" id="typeIncome" value="INCOME"
+                                   th:checked="${dto.type != null and dto.type.name() == 'INCOME'}"/>
+                            <label class="btn btn-outline-success w-100" for="typeIncome">
+                                <i class="bi bi-arrow-up-circle me-2"></i>Income
+                            </label>
+                        </div>
+                        <div class="flex-fill">
+                            <input type="radio" class="btn-check" name="type" id="typeExpense" value="EXPENSE"
+                                   th:checked="${dto.type == null or dto.type.name() == 'EXPENSE'}"/>
+                            <label class="btn btn-outline-danger w-100" for="typeExpense">
+                                <i class="bi bi-arrow-down-circle me-2"></i>Expense
+                            </label>
+                        </div>
+                    </div>
+                    <div class="invalid-feedback d-block" th:if="${#fields.hasErrors('type')}" th:errors="*{type}"></div>
+                </div>
+
+                <!-- Amount -->
+                <div class="mb-3">
+                    <label class="form-label fw-medium">Amount</label>
+                    <div class="input-group">
+                        <span class="input-group-text fw-bold">₹</span>
+                        <input type="number" th:field="*{amount}" class="form-control"
+                               th:classappend="${#fields.hasErrors('amount')} ? 'is-invalid'"
+                               placeholder="0.00" step="0.01" min="0.01"/>
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('amount')}" th:errors="*{amount}"></div>
+                    </div>
+                </div>
+
+                <!-- Category -->
+                <div class="mb-3">
+                    <label class="form-label fw-medium">Category</label>
+                    <select th:field="*{categoryId}" id="categorySelect" class="form-select"
+                            th:classappend="${#fields.hasErrors('categoryId')} ? 'is-invalid'">
+                        <option value="">— Select Category —</option>
+                        <optgroup label="Income Categories" id="incomeGroup">
+                            <option th:each="cat : ${incomeCategories}"
+                                    th:value="${cat.id}"
+                                    th:text="${cat.name}"
+                                    th:selected="${dto.categoryId != null and dto.categoryId == cat.id}">
+                            </option>
+                        </optgroup>
+                        <optgroup label="Expense Categories" id="expenseGroup">
+                            <option th:each="cat : ${expenseCategories}"
+                                    th:value="${cat.id}"
+                                    th:text="${cat.name}"
+                                    th:selected="${dto.categoryId != null and dto.categoryId == cat.id}">
+                            </option>
+                        </optgroup>
+                    </select>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('categoryId')}" th:errors="*{categoryId}"></div>
+                </div>
+
+                <!-- Date -->
+                <div class="mb-3">
+                    <label class="form-label fw-medium">Date</label>
+                    <input type="date" th:field="*{transactionDate}" class="form-control"
+                           th:classappend="${#fields.hasErrors('transactionDate')} ? 'is-invalid'"
+                           th:max="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}"/>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('transactionDate')}" th:errors="*{transactionDate}"></div>
+                </div>
+
+                <!-- Payment Method -->
+                <div class="mb-3">
+                    <label class="form-label fw-medium">Payment Method</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <div th:each="pm : ${paymentMethods}">
+                            <input type="radio" class="btn-check" th:id="'pm_' + ${pm.name()}"
+                                   name="paymentMethod" th:value="${pm.name()}"
+                                   th:checked="${dto.paymentMethod != null and dto.paymentMethod == pm}"/>
+                            <label class="btn btn-sm btn-outline-secondary" th:for="'pm_' + ${pm.name()}"
+                                   th:text="${pm.displayName}"></label>
+                        </div>
+                    </div>
+                    <div class="invalid-feedback d-block" th:if="${#fields.hasErrors('paymentMethod')}" th:errors="*{paymentMethod}"></div>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-4">
+                    <label class="form-label fw-medium">Description <span class="text-muted fw-normal">(optional)</span></label>
+                    <textarea th:field="*{description}" class="form-control"
+                              th:classappend="${#fields.hasErrors('description')} ? 'is-invalid'"
+                              rows="2" placeholder="Add a note..."></textarea>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('description')}" th:errors="*{description}"></div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4 fw-medium">
+                        <i class="bi bi-check-lg me-2"></i>Save Transaction
+                    </button>
+                    <a th:href="@{/transactions}" class="btn btn-outline-secondary px-4">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{layout :: scripts}"></div>
+<script>
+    // Filter category dropdown based on selected type
+    function filterCategories() {
+        const type = document.querySelector('input[name="type"]:checked')?.value;
+        const incomeGroup = document.getElementById('incomeGroup');
+        const expenseGroup = document.getElementById('expenseGroup');
+        const select = document.getElementById('categorySelect');
+
+        if (type === 'INCOME') {
+            incomeGroup.style.display = '';
+            expenseGroup.style.display = 'none';
+            // Clear expense selections
+            expenseGroup.querySelectorAll('option').forEach(o => o.selected = false);
+        } else {
+            incomeGroup.style.display = 'none';
+            expenseGroup.style.display = '';
+            incomeGroup.querySelectorAll('option').forEach(o => o.selected = false);
+        }
+    }
+    document.querySelectorAll('input[name="type"]').forEach(r => r.addEventListener('change', filterCategories));
+    filterCategories();
+</script>
+</body>
+</html>

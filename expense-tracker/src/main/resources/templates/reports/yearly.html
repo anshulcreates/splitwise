@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Yearly Report')}"></head>
+<body>
+<div th:replace="~{layout :: toasts}"></div>
+<nav th:replace="~{layout :: navbar}"></nav>
+
+<div class="container-fluid px-4 py-4">
+
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h4 class="fw-bold mb-1">Yearly Report</h4>
+            <p class="text-muted mb-0 small">Annual income &amp; expense overview</p>
+        </div>
+        <form th:action="@{/reports/yearly}" method="get" class="d-flex gap-2 align-items-center">
+            <select name="year" class="form-select form-select-sm" style="width:auto;">
+                <option th:each="y : ${availableYears}" th:value="${y}" th:text="${y}"
+                        th:selected="${y == selectedYear}"></option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm px-3">
+                <i class="bi bi-arrow-right"></i>
+            </button>
+        </form>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-4">
+            <div class="card border-0 shadow-sm income-card">
+                <div class="card-body py-3">
+                    <p class="text-muted small mb-1 fw-medium text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Total Income <span th:text="${report.year}"></span></p>
+                    <h5 class="fw-bold mb-0 text-success"
+                        th:text="'₹' + ${#numbers.formatDecimal(report.totalIncome, 1, 'COMMA', 2, 'POINT')}">₹0.00</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-4">
+            <div class="card border-0 shadow-sm expense-card">
+                <div class="card-body py-3">
+                    <p class="text-muted small mb-1 fw-medium text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Total Expenses <span th:text="${report.year}"></span></p>
+                    <h5 class="fw-bold mb-0 text-danger"
+                        th:text="'₹' + ${#numbers.formatDecimal(report.totalExpense, 1, 'COMMA', 2, 'POINT')}">₹0.00</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm savings-card">
+                <div class="card-body py-3">
+                    <p class="text-muted small mb-1 fw-medium text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Net Savings <span th:text="${report.year}"></span></p>
+                    <h5 class="fw-bold mb-0"
+                        th:classappend="${report.netSavings.compareTo(T(java.math.BigDecimal).ZERO) >= 0} ? 'text-purple' : 'text-danger'"
+                        th:text="'₹' + ${#numbers.formatDecimal(report.netSavings, 1, 'COMMA', 2, 'POINT')}">₹0.00</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bar chart -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 pt-3 pb-0 px-4">
+            <h6 class="fw-semibold mb-0"><i class="bi bi-bar-chart me-2 text-primary"></i>Monthly Income vs Expenses — <span th:text="${report.year}"></span></h6>
+        </div>
+        <div class="card-body">
+            <canvas id="yearlyBarChart" style="max-height:300px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Monthly breakdown table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 pt-3 pb-0 px-4">
+            <h6 class="fw-semibold mb-0"><i class="bi bi-table me-2 text-primary"></i>Month-by-Month Breakdown</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Month</th>
+                            <th class="text-end">Income</th>
+                            <th class="text-end">Expense</th>
+                            <th class="text-end">Savings</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="i : ${#numbers.sequence(0, 11)}">
+                            <td class="fw-medium" th:text="${report.monthLabels[i]}"></td>
+                            <td class="text-end text-success fw-semibold"
+                                th:text="'₹' + ${#numbers.formatDecimal(report.monthlyIncome[i], 1, 'COMMA', 2, 'POINT')}"></td>
+                            <td class="text-end text-danger fw-semibold"
+                                th:text="'₹' + ${#numbers.formatDecimal(report.monthlyExpense[i], 1, 'COMMA', 2, 'POINT')}"></td>
+                            <td class="text-end fw-semibold"
+                                th:with="savings=${report.monthlyIncome[i].subtract(report.monthlyExpense[i])}"
+                                th:classappend="${savings.compareTo(T(java.math.BigDecimal).ZERO) >= 0} ? 'text-purple' : 'text-danger'"
+                                th:text="'₹' + ${#numbers.formatDecimal(savings, 1, 'COMMA', 2, 'POINT')}"></td>
+                        </tr>
+                    </tbody>
+                    <tfoot class="table-light fw-bold">
+                        <tr>
+                            <td>Total</td>
+                            <td class="text-end text-success"
+                                th:text="'₹' + ${#numbers.formatDecimal(report.totalIncome, 1, 'COMMA', 2, 'POINT')}"></td>
+                            <td class="text-end text-danger"
+                                th:text="'₹' + ${#numbers.formatDecimal(report.totalExpense, 1, 'COMMA', 2, 'POINT')}"></td>
+                            <td class="text-end"
+                                th:classappend="${report.netSavings.compareTo(T(java.math.BigDecimal).ZERO) >= 0} ? 'text-purple' : 'text-danger'"
+                                th:text="'₹' + ${#numbers.formatDecimal(report.netSavings, 1, 'COMMA', 2, 'POINT')}"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script th:inline="javascript">
+    const yearlyLabels  = /*[[${report.monthLabels}]]*/ [];
+    const yearlyIncome  = /*[[${report.monthlyIncome}]]*/ [];
+    const yearlyExpense = /*[[${report.monthlyExpense}]]*/ [];
+</script>
+<div th:replace="~{layout :: scripts}"></div>
+<script>
+    initBarChart('yearlyBarChart', yearlyLabels, yearlyIncome, yearlyExpense);
+</script>
+</body>
+</html>

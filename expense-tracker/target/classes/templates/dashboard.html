@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Dashboard')}"></head>
+<body>
+<div th:replace="~{layout :: toasts}"></div>
+<nav th:replace="~{layout :: navbar}"></nav>
+
+<div class="container-fluid px-4 py-4">
+
+    <!-- Welcome Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h4 class="fw-bold mb-1">Good day, <span th:text="${user.fullName.split(' ')[0]}">User</span>! 👋</h4>
+            <p class="text-muted mb-0" th:text="${#temporals.format(today, 'EEEE, MMMM d, yyyy')}">Today</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a th:href="@{/transactions/add(type=INCOME)}" class="btn btn-success btn-sm px-3">
+                <i class="bi bi-plus-circle me-1"></i>Add Income
+            </a>
+            <a th:href="@{/transactions/add(type=EXPENSE)}" class="btn btn-danger btn-sm px-3">
+                <i class="bi bi-dash-circle me-1"></i>Add Expense
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100 summary-card income-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1 fw-medium text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Monthly Income</p>
+                            <h4 class="fw-bold mb-0 text-success" th:text="'₹' + ${#numbers.formatDecimal(dashboard.monthlyIncome, 1, 'COMMA', 2, 'POINT')}">₹0.00</h4>
+                        </div>
+                        <div class="summary-icon income-icon"><i class="bi bi-arrow-up-circle-fill"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100 summary-card expense-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1 fw-medium text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Monthly Expenses</p>
+                            <h4 class="fw-bold mb-0 text-danger" th:text="'₹' + ${#numbers.formatDecimal(dashboard.monthlyExpense, 1, 'COMMA', 2, 'POINT')}">₹0.00</h4>
+                        </div>
+                        <div class="summary-icon expense-icon"><i class="bi bi-arrow-down-circle-fill"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100 summary-card balance-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1 fw-medium text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Current Balance</p>
+                            <h4 class="fw-bold mb-0 text-primary" th:text="'₹' + ${#numbers.formatDecimal(dashboard.currentBalance, 1, 'COMMA', 2, 'POINT')}">₹0.00</h4>
+                        </div>
+                        <div class="summary-icon balance-icon"><i class="bi bi-wallet-fill"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100 summary-card savings-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1 fw-medium text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Monthly Savings</p>
+                            <h4 class="fw-bold mb-0 text-purple"
+                                th:classappend="${dashboard.monthlySavings.compareTo(T(java.math.BigDecimal).ZERO) >= 0} ? 'text-purple' : 'text-danger'"
+                                th:text="'₹' + ${#numbers.formatDecimal(dashboard.monthlySavings, 1, 'COMMA', 2, 'POINT')}">₹0.00</h4>
+                        </div>
+                        <div class="summary-icon savings-icon"><i class="bi bi-piggy-bank-fill"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-3 mb-4">
+        <!-- Pie Chart -->
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pb-0 pt-3 px-4">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-pie-chart me-2 text-primary"></i>Expenses by Category</h6>
+                    <small class="text-muted">This month</small>
+                </div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                    <div th:if="${#lists.isEmpty(dashboard.expenseCategoryLabels)}" class="empty-state text-center py-4">
+                        <i class="bi bi-pie-chart text-muted" style="font-size:3rem;opacity:.3;"></i>
+                        <p class="text-muted mt-2 mb-0">No expense data yet</p>
+                    </div>
+                    <div th:unless="${#lists.isEmpty(dashboard.expenseCategoryLabels)}" style="position:relative;width:100%;max-width:260px;">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bar Chart -->
+        <div class="col-12 col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pb-0 pt-3 px-4">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-bar-chart me-2 text-primary"></i>Income vs Expenses</h6>
+                    <small class="text-muted">Last 6 months</small>
+                </div>
+                <div class="card-body">
+                    <canvas id="barChart" style="max-height:220px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Line Chart + Recent Transactions -->
+    <div class="row g-3">
+        <!-- Line Chart -->
+        <div class="col-12 col-lg-7">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 pb-0 pt-3 px-4">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-graph-up me-2 text-primary"></i>Daily Spending</h6>
+                    <small class="text-muted">This month</small>
+                </div>
+                <div class="card-body">
+                    <div th:if="${#lists.isEmpty(dashboard.dailyLabels)}" class="empty-state text-center py-4">
+                        <i class="bi bi-graph-up text-muted" style="font-size:3rem;opacity:.3;"></i>
+                        <p class="text-muted mt-2 mb-0">No spending data yet</p>
+                    </div>
+                    <canvas th:unless="${#lists.isEmpty(dashboard.dailyLabels)}" id="lineChart" style="max-height:220px;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="col-12 col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3 px-4">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Transactions</h6>
+                    <a th:href="@{/transactions}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div th:if="${#lists.isEmpty(dashboard.recentTransactions)}" class="empty-state text-center py-5">
+                        <i class="bi bi-receipt text-muted" style="font-size:3rem;opacity:.3;"></i>
+                        <p class="text-muted mt-2 mb-1">No transactions yet</p>
+                        <a th:href="@{/transactions/add}" class="btn btn-sm btn-primary mt-1">Add your first one</a>
+                    </div>
+                    <ul class="list-group list-group-flush" th:unless="${#lists.isEmpty(dashboard.recentTransactions)}">
+                        <li class="list-group-item px-4 py-3" th:each="t : ${dashboard.recentTransactions}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="transaction-icon"
+                                         th:classappend="${t.type.name() == 'INCOME'} ? 'income-icon-sm' : 'expense-icon-sm'">
+                                        <i th:class="${t.category.icon ?: 'bi bi-circle'}"></i>
+                                    </div>
+                                    <div>
+                                        <p class="mb-0 fw-medium small" th:text="${t.category.name}">Category</p>
+                                        <p class="mb-0 text-muted" style="font-size:.78rem;"
+                                           th:text="${#temporals.format(t.transactionDate, 'dd MMM yyyy')}">Date</p>
+                                    </div>
+                                </div>
+                                <span class="fw-semibold"
+                                      th:classappend="${t.type.name() == 'INCOME'} ? 'text-success' : 'text-danger'"
+                                      th:text="${t.type.name() == 'INCOME' ? '+' : '-'} + '₹' + ${#numbers.formatDecimal(t.amount, 1, 'COMMA', 2, 'POINT')}">
+                                </span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pass chart data to JS -->
+<script th:inline="javascript">
+    const pieLabels   = /*[[${dashboard.expenseCategoryLabels}]]*/ [];
+    const pieData     = /*[[${dashboard.expenseCategoryData}]]*/ [];
+    const pieColors   = /*[[${dashboard.expenseCategoryColors}]]*/ [];
+    const barLabels   = /*[[${dashboard.monthlyLabels}]]*/ [];
+    const barIncome   = /*[[${dashboard.monthlyIncomeData}]]*/ [];
+    const barExpense  = /*[[${dashboard.monthlyExpenseData}]]*/ [];
+    const lineLabels  = /*[[${dashboard.dailyLabels}]]*/ [];
+    const lineData    = /*[[${dashboard.dailySpendingData}]]*/ [];
+</script>
+<div th:replace="~{layout :: scripts}"></div>
+<script>
+    if (pieLabels.length > 0) initPieChart('pieChart', pieLabels, pieData, pieColors);
+    initBarChart('barChart', barLabels, barIncome, barExpense);
+    if (lineLabels.length > 0) initLineChart('lineChart', lineLabels, lineData);
+</script>
+</body>
+</html>

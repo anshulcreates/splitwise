@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Monthly Report')}"></head>
+<body>
+<div th:replace="~{layout :: toasts}"></div>
+<nav th:replace="~{layout :: navbar}"></nav>
+
+<div class="container-fluid px-4 py-4">
+
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h4 class="fw-bold mb-1">Monthly Report</h4>
+            <p class="text-muted mb-0 small">Detailed breakdown for the selected month</p>
+        </div>
+        <!-- Month / Year selector -->
+        <form th:action="@{/reports/monthly}" method="get" class="d-flex gap-2 align-items-center">
+            <select name="month" class="form-select form-select-sm" style="width:auto;">
+                <option th:each="m : ${#numbers.sequence(1,12)}"
+                        th:value="${m}"
+                        th:text="${{'January','February','March','April','May','June','July','August','September','October','November','December'}[m-1]}"
+                        th:selected="${m == selectedMonth}"></option>
+            </select>
+            <select name="year" class="form-select form-select-sm" style="width:auto;">
+                <option th:each="y : ${availableYears}" th:value="${y}" th:text="${y}"
+                        th:selected="${y == selectedYear}"></option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm px-3">
+                <i class="bi bi-arrow-right"></i>
+            </button>
+        </form>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-4">
+            <div class="card border-0 shadow-sm income-card">
+                <div class="card-body py-3">
+                    <p class="text-muted small mb-1 fw-medium text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Total Income</p>
+                    <h5 class="fw-bold mb-0 text-success"
+                        th:text="'₹' + ${#numbers.formatDecimal(report.totalIncome, 1, 'COMMA', 2, 'POINT')}">₹0.00</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-4">
+            <div class="card border-0 shadow-sm expense-card">
+                <div class="card-body py-3">
+                    <p class="text-muted small mb-1 fw-medium text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Total Expenses</p>
+                    <h5 class="fw-bold mb-0 text-danger"
+                        th:text="'₹' + ${#numbers.formatDecimal(report.totalExpense, 1, 'COMMA', 2, 'POINT')}">₹0.00</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm savings-card">
+                <div class="card-body py-3">
+                    <p class="text-muted small mb-1 fw-medium text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Net Savings</p>
+                    <h5 class="fw-bold mb-0"
+                        th:classappend="${report.netSavings.compareTo(T(java.math.BigDecimal).ZERO) >= 0} ? 'text-purple' : 'text-danger'"
+                        th:text="'₹' + ${#numbers.formatDecimal(report.netSavings, 1, 'COMMA', 2, 'POINT')}">₹0.00</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <!-- Pie chart -->
+        <div class="col-12 col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pt-3 pb-0 px-4">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-pie-chart me-2 text-primary"></i>Expense by Category</h6>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <div th:if="${#lists.isEmpty(report.categoryLabels)}" class="empty-state text-center py-4">
+                        <i class="bi bi-pie-chart text-muted" style="font-size:3rem;opacity:.3;"></i>
+                        <p class="text-muted mt-2 mb-0 small">No expense data this month</p>
+                    </div>
+                    <div th:unless="${#lists.isEmpty(report.categoryLabels)}" style="max-width:280px;width:100%;">
+                        <canvas id="monthlyPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category breakdown table -->
+        <div class="col-12 col-lg-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pt-3 pb-0 px-4">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-table me-2 text-primary"></i>Category Breakdown</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div th:if="${report.categoryBreakdown.isEmpty()}" class="empty-state text-center py-5">
+                        <p class="text-muted small mb-0">No expenses recorded this month.</p>
+                    </div>
+                    <div th:unless="${report.categoryBreakdown.isEmpty()}" class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">% of Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="entry : ${report.categoryBreakdown}">
+                                    <td class="fw-medium" th:text="${entry.key}"></td>
+                                    <td class="text-end text-danger fw-semibold"
+                                        th:text="'₹' + ${#numbers.formatDecimal(entry.value, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end text-muted small">
+                                        <span th:text="${report.totalExpense.compareTo(T(java.math.BigDecimal).ZERO) > 0}
+                                            ? ${#numbers.formatDecimal(entry.value.divide(report.totalExpense, 4, T(java.math.RoundingMode).HALF_UP).multiply(T(java.math.BigDecimal).valueOf(100)), 1, 1)}
+                                            : '0'"></span>%
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction list -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 pt-3 pb-0 px-4 d-flex justify-content-between align-items-center">
+            <h6 class="fw-semibold mb-0"><i class="bi bi-list-ul me-2 text-primary"></i>All Transactions This Month</h6>
+            <span class="badge bg-light text-dark border" th:text="${#lists.size(report.transactions)} + ' records'"></span>
+        </div>
+        <div class="card-body p-0">
+            <div th:if="${#lists.isEmpty(report.transactions)}" class="empty-state text-center py-5">
+                <i class="bi bi-receipt text-muted" style="font-size:3rem;opacity:.3;"></i>
+                <p class="text-muted mt-2 mb-0 small">No transactions recorded for this month.</p>
+            </div>
+            <div th:unless="${#lists.isEmpty(report.transactions)}" class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Payment</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="t : ${report.transactions}">
+                            <td class="text-nowrap" th:text="${#temporals.format(t.transactionDate, 'dd MMM')}"></td>
+                            <td>
+                                <span th:if="${t.type.name() == 'INCOME'}" class="badge bg-success-subtle text-success fw-medium">
+                                    <i class="bi bi-arrow-up me-1"></i>Income
+                                </span>
+                                <span th:if="${t.type.name() == 'EXPENSE'}" class="badge bg-danger-subtle text-danger fw-medium">
+                                    <i class="bi bi-arrow-down me-1"></i>Expense
+                                </span>
+                            </td>
+                            <td>
+                                <span class="d-flex align-items-center gap-2">
+                                    <i th:class="${t.category.icon ?: 'bi bi-tag'} + ' text-primary'" style="font-size:.85rem;"></i>
+                                    <span th:text="${t.category.name}" class="small"></span>
+                                </span>
+                            </td>
+                            <td class="text-muted small" th:text="${t.description ?: '—'}"></td>
+                            <td><span class="badge bg-light text-dark border small" th:text="${t.paymentMethod.displayName}"></span></td>
+                            <td class="text-end fw-semibold"
+                                th:classappend="${t.type.name() == 'INCOME'} ? 'text-success' : 'text-danger'"
+                                th:text="${t.type.name() == 'INCOME' ? '+' : '-'} + '₹' + ${#numbers.formatDecimal(t.amount, 1, 'COMMA', 2, 'POINT')}">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script th:inline="javascript">
+    const pieLabels  = /*[[${report.categoryLabels}]]*/ [];
+    const pieData    = /*[[${report.categoryData}]]*/ [];
+    const pieColors  = /*[[${report.categoryColors}]]*/ [];
+</script>
+<div th:replace="~{layout :: scripts}"></div>
+<script>
+    if (pieLabels.length > 0) initPieChart('monthlyPieChart', pieLabels, pieData, pieColors);
+</script>
+</body>
+</html>
