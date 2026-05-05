@@ -1,15 +1,8 @@
-# Exported from Render on 2026-05-05
-version: "1"
-projects:
-- name: Expense Tracker
-  environments:
-  - name: Production
-    services:
-    - type: web
-      name: expense-tracker
-      runtime: docker
-      repo: https://github.com/anshulcreates/splitwise
-      plan: free
-      region: ohio
-      dockerfilePath: ./Dockerfile
-      autoDeployTrigger: commit
+services:
+  - type: web
+    name: expense-tracker
+    runtime: docker
+    plan: free
+    region: ohio
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
