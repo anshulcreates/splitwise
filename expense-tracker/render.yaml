@@ -7,9 +7,11 @@ projects:
     services:
     - type: web
       name: expense-tracker
-      runtime: java
+      runtime: docker
       repo: https://github.com/anshulcreates/splitwise
       plan: free
+      region: ohio
+      dockerfilePath: ./Dockerfile
       envVars:
       - key: DATABASE_URL
         sync: false
@@ -17,7 +19,4 @@ projects:
         sync: false
       - key: DATABASE_PASSWORD
         sync: false
-      region: ohio
-      buildCommand: ./mvnw clean package -DskipTests
-      startCommand: java -Dserver.port=$PORT -jar target/expense-tracker-1.0.0.jar
       autoDeployTrigger: commit
