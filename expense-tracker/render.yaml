@@ -1,7 +1,23 @@
-services:
-  - type: web
-    name: expense-tracker
-    plan: free
-    runtime: ubuntu
-    buildCommand: ./mvnw clean package -DskipTests
-    startCommand: java -Dserver.port=$PORT -jar target/*.jar
+# Exported from Render on 2026-05-05
+version: "1"
+projects:
+- name: Expense Tracker
+  environments:
+  - name: Production
+    services:
+    - type: web
+      name: expense-tracker
+      runtime: java
+      repo: https://github.com/anshulcreates/splitwise
+      plan: free
+      envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USER
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      region: ohio
+      buildCommand: ./mvnw clean package -DskipTests
+      startCommand: java -Dserver.port=$PORT -jar target/expense-tracker-1.0.0.jar
+      autoDeployTrigger: commit
